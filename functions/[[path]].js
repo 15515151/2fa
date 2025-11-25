@@ -1,40 +1,16 @@
 // Cloudflare Workers函数 - 根路径处理
 // 对于Cloudflare Pages，静态文件（如index.html）通常直接从文件系统提供服务
-// 这个函数将处理除/totp之外的所有API路径
+// 这个函数将只处理API路径，不对index.html和静态资源进行重定向
 
 export async function onRequestGet(context) {
   const { request } = context;
   const url = new URL(request.url);
-
+  
   // 检查请求的路径
   const path = url.pathname;
-
-  // 如果请求的是根路径，则重定向到index.html
-  if (path === '/' || path === '/index.html') {
-    // 返回一个简单的响应，指示用户访问index.html
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Redirecting...</title>
-  <meta http-equiv="refresh" content="0; url=./index.html" />
-</head>
-<body>
-  <p>Redirecting to <a href="./index.html">TOTP Generator</a>...</p>
-</body>
-</html>`;
-
-    return new Response(html, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-      }
-    });
-  }
-  // 如果请求的是 /api 路径，返回API使用说明
-  else if (path === '/api') {
+  
+  // 只处理 /api 和 /totp 路径，其他路径交给静态文件服务
+  if (path === '/api') {
     const apiInfo = {
       message: 'TOTP API Server on Cloudflare Workers',
       version: '1.0.0',
@@ -67,34 +43,25 @@ export async function onRequestGet(context) {
 
     return new Response(JSON.stringify(apiInfo, null, 2), {
       status: 200,
-      headers: {
+      headers: { 
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
       }
     });
-  }
-  else {
-    // 对于其他路径，重定向到index.html
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Redirecting...</title>
-  <meta http-equiv="refresh" content="0; url=./index.html" />
-</head>
-<body>
-  <p>Redirecting to <a href="./index.html">TOTP Generator</a>...</p>
-</body>
-</html>`;
-
-    return new Response(html, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-      }
+  } 
+  // 检查是否为 /totp 路径（API路由）
+  else if (path === '/totp' || path.startsWith('/totp?')) {
+    // 这个情况不应该发生，因为 /totp API 由 functions/totp.js 处理
+    // 但我们还是返回一个说明
+    return new Response('API is handled by the dedicated totp function', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain' }
     });
+  } 
+  else {
+    // 对于其他路径，让Cloudflare Pages默认处理（返回静态文件）
+    // 返回 null 告诉 Pages 使用默认行为
+    return;
   }
 }
