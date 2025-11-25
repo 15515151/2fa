@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOTP API Response</title>
+</head>
+<body>
+    <script>
+        // 获取URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const base32 = urlParams.get('base32');
+        const periodStr = urlParams.get('period') || '30';
+        const digitsStr = urlParams.get('digits') || '6';
+        const algorithm = urlParams.get('algorithm') || 'SHA1';
+
+        // 简单的错误处理函数
+        function sendError(error, message) {
+            document.body.innerHTML = JSON.stringify({
+                error: error,
+                message: message
+            }, null, 2);
+        }
+
+        // 验证必要参数
+        if (!base32) {
+            sendError('Missing base32 parameter', 'Please provide a base32 encoded secret key');
+            throw new Error('Missing base32 parameter');
+        }
+
+        // 处理并清理密钥（移除空格）
+        const cleanSecret = base32.replace(/\s+/g, '');
+
+        // 验证并解析period参数
+        const period = parseInt(periodStr, 10);
+        if (isNaN(period) || period < 1 || period > 300) {
+            sendError('Invalid period parameter', 'Period must be a number between 1 and 300 seconds (default: 30)');
+            throw new Error('Invalid period parameter');
+        }
+
+        // 验证并解析digits参数
+        const digits = parseInt(digitsStr, 10);
+        if (isNaN(digits) || digits < 4 || digits > 10) {
+            sendError('Invalid digits parameter', 'Digits must be a number between 4 and 10 (default: 6)');
+            throw new Error('Invalid digits parameter');
+        }
+
+        // 验证算法参数
+        const validAlgorithms = ['SHA1', 'SHA256', 'SHA512'];
+        const validAlgorithm = validAlgorithms.includes(algorithm.toUpperCase()) ? algorithm.toUpperCase() : 'SHA1';
+
+        // 动态加载otpauth库
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/otpauth@9.1.4/dist/otpauth.umd.min.js';
+        script.onload = function() {
+            try {
+                // 创建TOTP实例
+                const totp = new OTPAuth.TOTP({
+                    issuer: 'TOTP API',
+                    label: 'User',
+                    algorithm: validAlgorithm,
+                    digits: digits,
+                    period: period,
+                    secret: cleanSecret,
+                });
+
+                // 生成当前验证码
+                const code = totp.generate();
+
+                // 计算剩余时间
+                const currentTime = Math.floor(Date.now() / 1000);
+                const timeStep = Math.floor(currentTime / period);
+                const secondsRemaining = period - (currentTime - timeStep * period);
+
+                // 返回JSON结果
+                const result = {
+                    success: true,
+                    code: code,
+                    remaining: secondsRemaining,
+                    algorithm: validAlgorithm,
+                    period: period,
+                    digits: digits,
+                    secret: cleanSecret,
+                    timestamp: currentTime
+                };
+
+                document.body.innerHTML = JSON.stringify(result, null, 2);
+                
+                // 设置Content-Type为JSON的样式
+                document.body.style.fontFamily = 'monospace';
+                document.body.style.whiteSpace = 'pre-wrap';
+                document.body.style.padding = '20px';
+            } catch (error) {
+                sendError('Invalid secret key', 'The provided secret key is not a valid Base32 encoded key');
+            }
+        };
+        script.onerror = function() {
+            sendError('Library load error', 'Failed to load TOTP library');
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

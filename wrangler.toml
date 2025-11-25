@@ -1,0 +1,17 @@
+name = "totp-api"
+compatibility_date = "2023-10-25"
+
+[env.production]
+account_id = "your-account-id"  # 替换为你的Cloudflare账户ID
+workers_dev = true
+compatibility_date = "2023-10-25"
+
+# 如果部署到Pages
+[vars]
+ENVIRONMENT = "production"
+
+# 环境变量（可选）
+[env.staging]
+account_id = "your-staging-account-id"
+workers_dev = true
+compatibility_date = "2023-10-25"

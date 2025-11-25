@@ -554,6 +554,9 @@
                             return;
                         }
 
+                        // 移除密钥中的所有空格
+                        const cleanSecret = this.secret.replace(/\s+/g, '');
+
                         try {
                             let totp = new OTPAuth.TOTP({
                                 issuer: "TOTP Generator",
@@ -561,7 +564,7 @@
                                 algorithm: this.algorithm,
                                 digits: parseInt(this.digits) || 6,
                                 period: parseInt(this.period) || 30,
-                                secret: this.secret,
+                                secret: cleanSecret,
                             });
 
                             this.totp = totp;
