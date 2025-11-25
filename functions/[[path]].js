@@ -5,11 +5,11 @@
 export async function onRequestGet(context) {
   const { request } = context;
   const url = new URL(request.url);
-  
+
   // 检查请求的路径
   const path = url.pathname;
-  
-  // 只处理 /api 和 /totp 路径，其他路径交给静态文件服务
+
+  // 只处理 /api 路径，其他路径交给静态文件服务
   if (path === '/api') {
     const apiInfo = {
       message: 'TOTP API Server on Cloudflare Workers',
@@ -43,25 +43,15 @@ export async function onRequestGet(context) {
 
     return new Response(JSON.stringify(apiInfo, null, 2), {
       status: 200,
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
       }
     });
-  } 
-  // 检查是否为 /totp 路径（API路由）
-  else if (path === '/totp' || path.startsWith('/totp?')) {
-    // 这个情况不应该发生，因为 /totp API 由 functions/totp.js 处理
-    // 但我们还是返回一个说明
-    return new Response('API is handled by the dedicated totp function', {
-      status: 404,
-      headers: { 'Content-Type': 'text/plain' }
-    });
-  } 
+  }
   else {
-    // 对于其他路径，让Cloudflare Pages默认处理（返回静态文件）
-    // 返回 null 告诉 Pages 使用默认行为
-    return;
+    // 对于其他路径，继续请求处理链，让Cloudflare Pages提供静态文件
+    return await context.next();
   }
 }
